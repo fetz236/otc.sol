@@ -8,9 +8,7 @@ struct BalanceRequest {
     pubkey: String,
 }
 
-async fn get_balance_endpoint(
-    query: web::Query<BalanceRequest>,
-) -> impl Responder {
+async fn get_balance_endpoint(query: web::Query<BalanceRequest>) -> impl Responder {
     match solana::get_balance(&query.pubkey).await {
         Ok(balance) => HttpResponse::Ok().json(balance),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
