@@ -16,13 +16,16 @@ pub async fn get_balance_endpoint(query: web::Query<BalanceRequest>) -> impl Res
     }
 }
 
-// Existing `get_balance` function
 pub async fn get_balance(pubkey_str: &str) -> Result<u64, Box<dyn std::error::Error>> {
     let rpc_url = "https://api.mainnet-beta.solana.com";
-    let client = RpcClient::new(rpc_url.to_string());
-
     let pubkey = Pubkey::from_str(pubkey_str)?;
-    let balance = client.get_balance(&pubkey)?;
+
+    // Run the blocking call in a threadpool
+    let balance = web::block(move || {
+        let client = RpcClient::new(rpc_url.to_string());
+        client.get_balance(&pubkey)
+    })
+    .await??; // Unwrap Result twice: one from `web::block`, another from `get_balance`
 
     Ok(balance)
 }
