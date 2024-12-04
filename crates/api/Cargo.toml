@@ -7,6 +7,10 @@ edition = "2021"
 name = "api"
 path = "src/lib.rs"
 
+[[bin]]
+name = "api-bin"
+path = "src/main.rs" # This points to the binary's entry point
+
 [dependencies]
 actix-web = { version = "4.0", features = ["macros"] }
 actix-web-httpauth = "0.7.0"
@@ -22,3 +26,4 @@ db = { path = "../db" }
 jsonwebtoken = "8.2"
 chrono = { version = "0.4", features = ["serde"] }
 futures-util = "0.3"
+actix-service = "2.0"

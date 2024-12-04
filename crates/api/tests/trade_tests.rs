@@ -1,4 +1,5 @@
 use api::handlers::{auth_handlers, trades};
+use api::middleware::auth_middleware::AuthMiddleware;
 use actix_web::{test, web, App};
 use diesel::r2d2::{self, ConnectionManager};
 use diesel::PgConnection;
@@ -13,8 +14,6 @@ async fn test_create_trade() {
         .build(manager)
         .expect("Failed to create pool.");
 
-    let auth_middleware = api::middleware::auth_middleware::auth_validator;
-
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(pool.clone()))
@@ -25,7 +24,7 @@ async fn test_create_trade() {
             )
             .service(
                 web::scope("/trades")
-                    .wrap(auth_middleware.clone())
+                    .wrap(AuthMiddleware)
                     .route("", web::post().to(trades::create_trade)),
             ),
     )

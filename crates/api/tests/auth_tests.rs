@@ -1,5 +1,4 @@
 use api::handlers::auth_handlers;
-use db;
 use actix_web::{test, web, App};
 use diesel::r2d2::{self, ConnectionManager};
 use diesel::PgConnection;
