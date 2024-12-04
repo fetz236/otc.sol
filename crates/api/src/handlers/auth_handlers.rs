@@ -1,7 +1,11 @@
 use actix_web::{web, HttpResponse};
+use actix_web::Error;
+use diesel::associations::HasTable;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use db::models::{NewUser, User};
 use diesel::prelude::*;
+use diesel::r2d2;
+use diesel::r2d2::ConnectionManager;
 use serde::Deserialize;
 use crate::auth::create_token;
 use db::schema::users::dsl::users as users_table;
@@ -16,24 +20,29 @@ pub struct RegisterData {
 }
 
 pub async fn register(
+    pool: web::Data<r2d2::Pool<ConnectionManager<PgConnection>>>,
     data: web::Json<RegisterData>,
-    pool: web::Data<db::Pool>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+) -> Result<HttpResponse, Error> {
+    let mut conn = pool.get().map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("Failed to get DB connection: {}", e))
+    })?;
 
-    let password_hash = hash(&data.password, DEFAULT_COST)
-        .map_err(|_| actix_web::error::ErrorInternalServerError("Password hashing error"))?;
+    let hashed_password = hash(&data.password, DEFAULT_COST).map_err(|e| {
+        actix_web::error::ErrorInternalServerError(format!("Password hashing error: {}", e))
+    })?;
 
     let new_user = NewUser {
         username: data.username.clone(),
         email: data.email.clone(),
-        password_hash,
+        password_hash: hashed_password,
     };
 
-    diesel::insert_into(users_table)
+    diesel::insert_into(users::table())
         .values(&new_user)
         .execute(&mut conn)
-        .map_err(|_| actix_web::error::ErrorInternalServerError("Database insertion error"))?;
+        .map_err(|e| {
+            actix_web::error::ErrorInternalServerError(format!("Database insertion error: {}", e))
+        })?;
 
     Ok(HttpResponse::Created().finish())
 }
