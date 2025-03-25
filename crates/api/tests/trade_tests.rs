@@ -57,7 +57,7 @@ async fn test_create_trade() {
 
     // Get the user ID from the database
     let mut conn = pool.get().expect("Failed to get DB connection");
-    let user = users
+    let _user = users
         .filter(username.eq("testuser"))
         .first::<User>(&mut conn)
         .expect("Failed to get user");
