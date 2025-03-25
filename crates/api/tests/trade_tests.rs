@@ -4,6 +4,11 @@ use actix_web::{test, web, App};
 use diesel::r2d2::{self, ConnectionManager};
 use diesel::PgConnection;
 use std::env;
+use diesel::RunQueryDsl;
+use diesel::prelude::*;
+use db::models::User;
+use db::schema::users::dsl::*;
+use db::schema::trades::dsl::*;
 
 #[actix_web::test]
 async fn test_create_trade() {
@@ -13,6 +18,11 @@ async fn test_create_trade() {
     let pool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
+
+    // Clean up the database before testing
+    let mut conn = pool.get().expect("Failed to get DB connection");
+    diesel::delete(trades).execute(&mut conn).unwrap_or(0);
+    diesel::delete(users).execute(&mut conn).unwrap_or(0);
 
     let app = test::init_service(
         App::new()
@@ -30,7 +40,7 @@ async fn test_create_trade() {
     )
     .await;
 
-    // Register and log in a test user
+    // Register a test user
     let register_payload = serde_json::json!({
         "username": "testuser",
         "email": "test@example.com",
@@ -42,7 +52,15 @@ async fn test_create_trade() {
         .set_json(&register_payload)
         .to_request();
 
-    let _ = test::call_service(&app, register_req).await;
+    let register_resp = test::call_service(&app, register_req).await;
+    assert_eq!(register_resp.status(), actix_web::http::StatusCode::CREATED);
+
+    // Get the user ID from the database
+    let mut conn = pool.get().expect("Failed to get DB connection");
+    let _user = users
+        .filter(username.eq("testuser"))
+        .first::<User>(&mut conn)
+        .expect("Failed to get user");
 
     let login_payload = serde_json::json!({
         "username": "testuser",

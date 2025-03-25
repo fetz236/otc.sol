@@ -5,6 +5,8 @@ use diesel::PgConnection;
 use std::env;
 use diesel::RunQueryDsl;
 use uuid::Uuid;
+use db::schema::trades;
+use db::schema::users;
 
 #[actix_web::test]
 async fn test_register() {
@@ -19,12 +21,8 @@ async fn test_register() {
     // Clean the database before the test
     {
         let mut conn = pool.get().expect("Failed to get DB connection");
-        diesel::sql_query("DELETE FROM users")
-            .execute(&mut conn)
-            .expect("Failed to delete users");
-        diesel::sql_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
-            .execute(&mut conn)
-            .expect("Failed to reset user ID sequence");
+        diesel::delete(trades::table).execute(&mut conn).expect("Failed to delete trades");
+        diesel::delete(users::table).execute(&mut conn).expect("Failed to delete users");
     }
 
     let unique_username = format!("testuser_{}", Uuid::new_v4());
@@ -74,12 +72,8 @@ async fn test_login() {
     // Clean the database before the test
     {
         let mut conn = pool.get().expect("Failed to get DB connection");
-        diesel::sql_query("DELETE FROM users")
-            .execute(&mut conn)
-            .expect("Failed to delete users");
-        diesel::sql_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
-            .execute(&mut conn)
-            .expect("Failed to reset user ID sequence");
+        diesel::delete(trades::table).execute(&mut conn).expect("Failed to delete trades");
+        diesel::delete(users::table).execute(&mut conn).expect("Failed to delete users");
     }
 
     let app = test::init_service(
