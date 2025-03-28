@@ -1,6 +1,6 @@
 # otc.sol
 
-Trade solana OTC
+Trade solana OTC. Project to facilitate high volume solana trades over the counter. 
 
 ## Setup
 
