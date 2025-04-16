@@ -1,8 +1,9 @@
 use actix_web::{web, HttpResponse, Responder};
 use diesel::prelude::*;
 use db::models::Trade;
-use db::schema::trades::dsl::{trades, id as trade_id};
+use db::schema::trades::dsl::{trades, id as trade_id, status, creator_id};
 use serde::{Deserialize, Serialize};
+use crate::auth::Claims;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTradeData {
@@ -18,18 +19,33 @@ pub struct UpdateTradeData {
     pub status: Option<String>,
 }
 
-pub async fn get_trades(conn: web::Data<db::Pool>) -> impl Responder {
+pub async fn get_trades(
+    claims: Claims,
+    conn: web::Data<db::Pool>,
+) -> impl Responder {
     let mut conn = conn.get().expect("Failed to get DB connection");
-    let results = trades.load::<Trade>(&mut conn).expect("Error loading trades");
+    
+    // Get trades for the authenticated user
+    let results = trades
+        .filter(creator_id.eq(claims.user_id))
+        .load::<Trade>(&mut conn)
+        .expect("Error loading trades");
+
     HttpResponse::Ok().json(results)
 }
 
-pub async fn get_trade(path: web::Path<i32>, conn: web::Data<db::Pool>) -> impl Responder {
+pub async fn get_trade(
+    claims: Claims,
+    path: web::Path<i32>,
+    conn: web::Data<db::Pool>,
+) -> impl Responder {
     let trade_id = path.into_inner();
     let mut conn = conn.get().expect("Failed to get DB connection");
     
+    // Get trade for the authenticated user
     let trade = trades
         .filter(trade_id.eq(trade_id))
+        .filter(creator_id.eq(claims.user_id))
         .first::<Trade>(&mut conn)
         .expect("Error loading trade");
 
@@ -37,6 +53,7 @@ pub async fn get_trade(path: web::Path<i32>, conn: web::Data<db::Pool>) -> impl 
 }
 
 pub async fn create_trade(
+    claims: Claims,
     trade_data: web::Json<CreateTradeData>,
     conn: web::Data<db::Pool>,
 ) -> impl Responder {
@@ -44,7 +61,7 @@ pub async fn create_trade(
 
     let new_trade = Trade {
         id: 0, // Will be set by the database
-        creator_id: 1, // TODO: Get from auth
+        creator_id: claims.user_id,
         amount: trade_data.amount,
         price: trade_data.price,
         status: "Open".to_string(),
@@ -60,6 +77,7 @@ pub async fn create_trade(
 }
 
 pub async fn update_trade(
+    claims: Claims,
     path: web::Path<i32>,
     update_data: web::Json<UpdateTradeData>,
     conn: web::Data<db::Pool>,
@@ -70,17 +88,17 @@ pub async fn update_trade(
     let mut update = Vec::new();
     
     if let Some(amount) = update_data.amount {
-        update.push(amount.eq(amount));
+        update.push(amount.eq(&amount));
     }
     if let Some(price) = update_data.price {
-        update.push(price.eq(price));
+        update.push(price.eq(&price));
     }
     if let Some(status) = &update_data.status {
         update.push(status.eq(status));
     }
 
     if !update.is_empty() {
-        diesel::update(trades.filter(trade_id.eq(trade_id)))
+        diesel::update(trades.filter(trade_id.eq(trade_id)).filter(creator_id.eq(claims.user_id)))
             .set(&update)
             .execute(&mut conn)
             .expect("Error updating trade");
@@ -88,17 +106,22 @@ pub async fn update_trade(
 
     let updated_trade = trades
         .filter(trade_id.eq(trade_id))
+        .filter(creator_id.eq(claims.user_id))
         .first::<Trade>(&mut conn)
         .expect("Error loading updated trade");
 
     HttpResponse::Ok().json(updated_trade)
 }
 
-pub async fn delete_trade(path: web::Path<i32>, conn: web::Data<db::Pool>) -> impl Responder {
+pub async fn delete_trade(
+    claims: Claims,
+    path: web::Path<i32>,
+    conn: web::Data<db::Pool>,
+) -> impl Responder {
     let trade_id = path.into_inner();
     let mut conn = conn.get().expect("Failed to get DB connection");
 
-    diesel::delete(trades.filter(trade_id.eq(trade_id)))
+    diesel::delete(trades.filter(trade_id.eq(trade_id)).filter(creator_id.eq(claims.user_id)))
         .execute(&mut conn)
         .expect("Error deleting trade");
 
@@ -107,17 +130,22 @@ pub async fn delete_trade(path: web::Path<i32>, conn: web::Data<db::Pool>) -> im
     }))
 }
 
-pub async fn close_trade(path: web::Path<i32>, conn: web::Data<db::Pool>) -> impl Responder {
+pub async fn close_trade(
+    claims: Claims,
+    path: web::Path<i32>,
+    conn: web::Data<db::Pool>,
+) -> impl Responder {
     let trade_id = path.into_inner();
     let mut conn = conn.get().expect("Failed to get DB connection");
 
-    diesel::update(trades.filter(trade_id.eq(trade_id)))
+    diesel::update(trades.filter(trade_id.eq(trade_id)).filter(creator_id.eq(claims.user_id)))
         .set(status.eq("Closed"))
         .execute(&mut conn)
         .expect("Error closing trade");
 
     let closed_trade = trades
         .filter(trade_id.eq(trade_id))
+        .filter(creator_id.eq(claims.user_id))
         .first::<Trade>(&mut conn)
         .expect("Error loading closed trade");
 
