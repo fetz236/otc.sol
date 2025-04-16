@@ -1,3 +1,5 @@
+// @generated automatically by Diesel CLI.
+
 diesel::table! {
     users (id) {
         id -> Int4,
@@ -18,3 +20,10 @@ diesel::table! {
         created_at -> Timestamp,
     }
 }
+
+diesel::joinable!(trades -> users (creator_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    trades,
+    users,
+);

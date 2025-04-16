@@ -32,3 +32,81 @@ pub async fn create_trade(
 
     Ok(HttpResponse::Created().finish())
 }
+
+
+pub async fn get_trades(
+    pool: web::Data<db::Pool>,
+    claims: Claims,
+) -> Result<HttpResponse, actix_web::Error> {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let trades = trades
+        .filter(creator_id.eq(claims.sub.parse::<i32>().unwrap()))
+        .load::<Trade>(&mut conn)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database Error"))?;
+
+    Ok(HttpResponse::Ok().json(trades))
+}
+
+pub async fn get_trade(
+    pool: web::Data<db::Pool>,
+    claims: Claims,
+) -> Result<HttpResponse, actix_web::Error> {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let trade = trades
+        .filter(creator_id.eq(claims.sub.parse::<i32>().unwrap()))
+        .filter(id.eq(id.parse::<i32>().unwrap()))
+        .first::<Trade>(&mut conn)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database Error"))?;
+
+    Ok(HttpResponse::Ok().json(trade))
+}
+
+pub async fn update_trade(
+    pool: web::Data<db::Pool>,
+    claims: Claims,
+) -> Result<HttpResponse, actix_web::Error> {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let trade = get_trade(pool, claims).await?;
+
+    diesel::update(trades.find(trade.id))
+        .set(&data)
+        .execute(&mut conn)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database Error"))?;
+
+    Ok(HttpResponse::Ok().finish())
+}
+
+pub async fn delete_trade(
+    pool: web::Data<db::Pool>,
+    claims: Claims,
+) -> Result<HttpResponse, actix_web::Error> {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let trade = get_trade(pool, claims).await?;
+
+    diesel::delete(trades.find(trade.id))
+        .execute(&mut conn)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database Error"))?;
+
+    Ok(HttpResponse::Ok().finish())
+}
+
+pub async fn close_trade(
+    pool: web::Data<db::Pool>,
+    claims: Claims,
+) -> Result<HttpResponse, actix_web::Error> {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let trade = get_trade(pool, claims).await?;
+
+    diesel::update(trades.find(trade.id))
+        .set(&data)
+        .execute(&mut conn)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database Error"))?;
+
+    Ok(HttpResponse::Ok().finish())
+}
+
