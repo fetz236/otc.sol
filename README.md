@@ -1,6 +1,6 @@
 # otc.sol
 
-Trade solana OTC. Project to facilitate high volume solana trades over the counter. 
+Trade solana OTC. Project to facilitate high volume solana trades over the counter.
 
 ## Setup
 
@@ -21,6 +21,7 @@ export TEST_DATABASE_URL="postgres://YOUR_USERNAME@localhost:5432/otc_sol_test"
 4. Run database migrations:
 
 ```bash
+cd crates/db
 diesel migration run
 ```
 
@@ -37,3 +38,12 @@ Note: Make sure you have the diesel CLI installed. If not, install it with:
 ```bash
 cargo install diesel_cli --no-default-features --features postgres
 ```
+
+## Project Structure
+
+The project is organized as a workspace with multiple crates:
+
+- `db`: Database models and schema
+- `api`: HTTP API handlers and routes
+
+When running Diesel CLI commands, make sure to run them from the `db` crate directory to ensure schema files are generated in the correct location.
