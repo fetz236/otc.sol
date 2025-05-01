@@ -104,6 +104,12 @@ async fn test_create_trade() {
 
     let trade_resp = test::call_service(&app, trade_req).await;
     assert_eq!(trade_resp.status(), actix_web::http::StatusCode::CREATED);
+
+    let trade_body = test::read_body(trade_resp).await;
+    let trade: Trade = serde_json::from_slice(&trade_body).unwrap();
+    assert_eq!(trade.amount, 1000000);
+    assert_eq!(trade.price, 35.5);
+    assert_eq!(trade.status, "Open");
 }
 
 #[actix_web::test]
@@ -147,6 +153,7 @@ async fn test_get_trades() {
     assert_eq!(trades.len(), 1);
     assert_eq!(trades[0].amount, 1000000);
     assert_eq!(trades[0].price, 35.5);
+    assert_eq!(trades[0].status, "Open");
 }
 
 #[actix_web::test]
@@ -193,6 +200,7 @@ async fn test_get_trade() {
     let trade: Trade = serde_json::from_slice(&trade_body).unwrap();
     assert_eq!(trade.amount, 1000000);
     assert_eq!(trade.price, 35.5);
+    assert_eq!(trade.status, "Open");
 }
 
 #[actix_web::test]
